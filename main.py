@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import color_detect as cd
 import mouse
+import handsign as hs
 
 
 # ブロブ解析
@@ -47,15 +48,41 @@ def main():
     cap = cv2.VideoCapture(0)
     cv2.namedWindow("Frame", cv2.WINDOW_AUTOSIZE)
     mouse_data = mouse.Mouse("Frame")
+    targets =[]
 
     while cap.isOpened():
         ret, frame = cap.read()
 
-        if mouse_data.getEvent() == cv2.EVENT_LBUTTONDOWN:
-            cd.get_cursor_position_color(frame, mouse_data.getX(), mouse_data.getY())
+        if mouse_data.getEvent() == cv2.EVENT_LBUTTONUP:
+            c, h, s, v = cd.get_cursor_position_color(frame, mouse_data.getX(), mouse_data.getY())
+            color = {"color": c, "h": h, "s": s, "v": v}
+            targets.append(color)
 
-        existing_color = []
-        # フレームを取得
+        rect_num = 0
+        color_list = {}
+        for target in targets:
+            mask = cd.detect_color(frame, target["h"], target["s"], target["v"])
+            rects = region_of_interest(mask)
+            color_list[target["color"]] = 0
+
+            if len(rects) > 0:
+                if target["color"] == "yellow":
+                    for rect in rects:
+                        if rect[2] * rect[3] >= 500:
+                            cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (0, 0, 255), thickness=2)
+                            color_list[target["color"]] += 1
+                            rect_num += 1
+                elif target["color"] == "green":
+                    if rect[2] * rect[3] >= 500:
+                        rect = max(rects, key=(lambda x: x[2] * x[3]))
+                        cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (0, 0, 255), thickness=2)
+                        color_list[target["color"]] += 1
+                        rect_num += 1
+
+
+        cv2.putText(frame, "Rect:" + str(rect_num), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=1)
+        # cv2.putText(frame, "HandSign:" + hs.judge_hand_sign(rect_num), (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=1)
+        cv2.putText(frame, "HandSign:" + hs.judge_hand_sign_from_color(color_list), (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=1)
 
         # 赤色検出
         # red_mask = cd.detect_red(frame)
@@ -84,21 +111,12 @@ def main():
         #     cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (255, 0, 0), thickness=2)
         #     print("blue detected.")
 
-        # 白色検出
-        # white_mask = cd.detect_white(frame)
-        # cv2.imshow("White Mask", white_mask)
-        # white_rects = region_of_interest(white_mask)
-        # if len(white_rects) > 0:
-        #     rect = max(white_rects, key=(lambda x: x[2] * x[3]))
-        #     cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (255, 0, 0), thickness=2)
-        #     existing_color.append("white")
         # 結果表示
         cv2.imshow("Frame", frame)
 
         # qキーが押されたら途中終了
         if cv2.waitKey(25) & 0xFF == ord('q'):
             break
-
 
     cap.release()
     cv2.destroyAllWindows()
