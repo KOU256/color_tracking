@@ -2,8 +2,7 @@
 import cv2
 import numpy as np
 import color_detect as cd
-
-
+import mouse
 
 
 # ブロブ解析
@@ -46,38 +45,44 @@ def region_of_interest(mask):
 def main():
     # カメラのキャプチャ
     cap = cv2.VideoCapture(0)
+    cv2.namedWindow("Frame", cv2.WINDOW_AUTOSIZE)
+    mouse_data = mouse.Mouse("Frame")
 
     while cap.isOpened():
-        existing_color = []
-        # フレームを取得
         ret, frame = cap.read()
 
+        if mouse_data.getEvent() == cv2.EVENT_LBUTTONDOWN:
+            cd.get_cursor_position_color(frame, mouse_data.getX(), mouse_data.getY())
+
+        existing_color = []
+        # フレームを取得
+
         # 赤色検出
-        red_mask = cd.detect_red(frame)
-        cv2.imshow("Red Mask", red_mask)
-        red_rects = region_of_interest(red_mask)
-        if len(red_rects) > 0:
-            rect = max(red_rects, key=(lambda x: x[2] * x[3]))
-            cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (0, 0, 255), thickness=2)
-            print("red detected.")
+        # red_mask = cd.detect_red(frame)
+        # cv2.imshow("Red Mask", red_mask)
+        # red_rects = region_of_interest(red_mask)
+        # if len(red_rects) > 0:
+        #     rect = max(red_rects, key=(lambda x: x[2] * x[3]))
+        #     cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (0, 0, 255), thickness=2)
+        #     print("red detected.")
 
         # 緑色検出
-        green_mask = cd.detect_green(frame)
-        cv2.imshow("Green Mask", green_mask)
-        green_rects = region_of_interest(green_mask)
-        if len(green_rects) > 0:
-            rect = max(green_rects, key=(lambda x: x[2] * x[3]))
-            cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (0, 255, 0), thickness=2)
-            print("green detected.")
+        # green_mask = cd.detect_green(frame)
+        # cv2.imshow("Green Mask", green_mask)
+        # green_rects = region_of_interest(green_mask)
+        # if len(green_rects) > 0:
+        #     rect = max(green_rects, key=(lambda x: x[2] * x[3]))
+        #     cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (0, 255, 0), thickness=2)
+        #     print("green detected.")
 
         # 青色検出
-        blue_mask = cd.detect_blue(frame)
-        cv2.imshow("Blue Mask", blue_mask)
-        blue_rects = region_of_interest(blue_mask)
-        if len(blue_rects) > 0:
-            rect = max(blue_rects, key=(lambda x: x[2] * x[3]))
-            cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (255, 0, 0), thickness=2)
-            print("blue detected.")
+        # blue_mask = cd.detect_blue(frame)
+        # cv2.imshow("Blue Mask", blue_mask)
+        # blue_rects = region_of_interest(blue_mask)
+        # if len(blue_rects) > 0:
+        #     rect = max(blue_rects, key=(lambda x: x[2] * x[3]))
+        #     cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (255, 0, 0), thickness=2)
+        #     print("blue detected.")
 
         # 白色検出
         # white_mask = cd.detect_white(frame)
@@ -93,6 +98,7 @@ def main():
         # qキーが押されたら途中終了
         if cv2.waitKey(25) & 0xFF == ord('q'):
             break
+
 
     cap.release()
     cv2.destroyAllWindows()

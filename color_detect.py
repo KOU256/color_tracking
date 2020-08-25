@@ -55,3 +55,13 @@ def detect_white(img):
 
     return mask
 
+
+def get_cursor_position_color(img, x, y):
+    hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+    h = int(hsv.item(y, x, 0))
+    s = int(hsv.item(y, x, 1))
+    v = int(hsv.item(y, x, 2))
+
+    print("HSV: %d %d %d" % (h, s, v))
+
+    return h, s, v
