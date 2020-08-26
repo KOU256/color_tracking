@@ -85,4 +85,6 @@ def get_cursor_position_color(img, x, y):
 
     print("HSV: %d %d %d" % (h, s, v))
 
-    return get_color_from_hsv(h, s, v), h, s, v
+    # return get_color_from_hsv(h, s, v), h, s, v
+
+    return h, s, v

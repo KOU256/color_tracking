@@ -1,12 +1,17 @@
-def judge_hand_sign(finger_num):
-    if finger_num == 0:
-        return "fist"
-    elif finger_num == 1:
-        return "one"
-    elif finger_num == 2:
-        return "two"
-    elif finger_num == 3:
-        return "palm"
+def judge_hand_sign(part_list):
+    if "finger" in part_list and "palm" in part_list:
+        if part_list["palm"] == 1 and part_list["finger"] == 4:
+            return "open"
+        elif part_list["finger"] == 4:
+            return "four"
+        elif part_list["finger"] == 3:
+            return "three"
+        elif part_list["finger"] == 2:
+            return "two"
+        elif part_list["finger"] == 1:
+            return "one"
+        else:
+            return "close"
     else:
         return "none"
 

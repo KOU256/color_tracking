@@ -47,6 +47,8 @@ def main():
     # カメラのキャプチャ
     cap = cv2.VideoCapture(0)
     cv2.namedWindow("Frame", cv2.WINDOW_AUTOSIZE)
+    fgbg = cv2.createBackgroundSubtractorMOG2()
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
     mouse_data = mouse.Mouse("Frame")
     targets =[]
 
@@ -54,68 +56,48 @@ def main():
         ret, frame = cap.read()
 
         if mouse_data.getEvent() == cv2.EVENT_LBUTTONUP:
-            c, h, s, v = cd.get_cursor_position_color(frame, mouse_data.getX(), mouse_data.getY())
-            color = {"color": c, "h": h, "s": s, "v": v}
-            targets.append(color)
+            h, s, v = cd.get_cursor_position_color(frame, mouse_data.getX(), mouse_data.getY())
+            if len(targets) == 0:
+                target = {"part": "finger", "h": h, "s": s, "v": v}
+            else:
+                target = {"part": "palm", "h": h, "s": s, "v": v}
+            targets.append(target)
+        elif mouse_data.getEvent() == cv2.EVENT_RBUTTONUP:
+            targets.clear()
 
-        rect_num = 0
-        color_list = {}
+        fgmask = fgbg.apply(frame)
+        _, fgmask = cv2.threshold(fgmask, 127, 1, cv2.THRESH_BINARY)
+        fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
+        bgr = cv2.split(frame)
+        new_bgr = list(map(lambda x:x * fgmask, bgr))
+        result = cv2.merge(new_bgr)
+
+        part_list = {}
         for target in targets:
-            mask = cd.detect_color(frame, target["h"], target["s"], target["v"])
+            mask = cd.detect_color(result, target["h"], target["s"], target["v"])
             rects = region_of_interest(mask)
-            color_list[target["color"]] = 0
+            part = target["part"]
+            part_list[part] = 0
 
             if len(rects) > 0:
-                if target["color"] == "yellow":
+                if part == "finger":
                     for rect in rects:
-                        if rect[2] * rect[3] >= 500:
-                            cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (0, 0, 255), thickness=2)
-                            color_list[target["color"]] += 1
-                            rect_num += 1
-                elif target["color"] == "green":
-                    if rect[2] * rect[3] >= 500:
-                        rect = max(rects, key=(lambda x: x[2] * x[3]))
-                        cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (0, 0, 255), thickness=2)
-                        color_list[target["color"]] += 1
-                        rect_num += 1
+                        if rect[2] * rect[3] >= 150:
+                            cv2.rectangle(result, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (255, 255, 255), thickness=2)
+                            part_list[part] += 1
+                elif part == "palm":
+                    rect = max(rects, key=(lambda x: x[2] * x[3]))
+                    if rect[2] * rect[3] >= 150:
+                        cv2.rectangle(result, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (255, 255, 255), thickness=2)
+                        part_list[part] += 1
 
-
-        cv2.putText(frame, "Rect:" + str(rect_num), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=1)
-        # cv2.putText(frame, "HandSign:" + hs.judge_hand_sign(rect_num), (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=1)
-        cv2.putText(frame, "HandSign:" + hs.judge_hand_sign_from_color(color_list), (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=1)
-
-        # 赤色検出
-        # red_mask = cd.detect_red(frame)
-        # cv2.imshow("Red Mask", red_mask)
-        # red_rects = region_of_interest(red_mask)
-        # if len(red_rects) > 0:
-        #     rect = max(red_rects, key=(lambda x: x[2] * x[3]))
-        #     cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (0, 0, 255), thickness=2)
-        #     print("red detected.")
-
-        # 緑色検出
-        # green_mask = cd.detect_green(frame)
-        # cv2.imshow("Green Mask", green_mask)
-        # green_rects = region_of_interest(green_mask)
-        # if len(green_rects) > 0:
-        #     rect = max(green_rects, key=(lambda x: x[2] * x[3]))
-        #     cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (0, 255, 0), thickness=2)
-        #     print("green detected.")
-
-        # 青色検出
-        # blue_mask = cd.detect_blue(frame)
-        # cv2.imshow("Blue Mask", blue_mask)
-        # blue_rects = region_of_interest(blue_mask)
-        # if len(blue_rects) > 0:
-        #     rect = max(blue_rects, key=(lambda x: x[2] * x[3]))
-        #     cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (255, 0, 0), thickness=2)
-        #     print("blue detected.")
+        cv2.putText(result, "HandSign:" + hs.judge_hand_sign(part_list), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=1)
 
         # 結果表示
-        cv2.imshow("Frame", frame)
+        cv2.imshow("Frame", result)
 
         # qキーが押されたら途中終了
-        if cv2.waitKey(25) & 0xFF == ord('q'):
+        if cv2.waitKey(25) & 0xFF == ord('q') or not ret:
             break
 
     cap.release()
